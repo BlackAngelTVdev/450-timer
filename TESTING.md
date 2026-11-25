@@ -1,7 +1,7 @@
 # TESTING.md — TaskTimer
 
 Concept et stratégie de test — Module 450 (ETML / DevFactory)
-Version du document : 1.0 — 25.11.2026
+Version du document : 1.1 — 25.11.2026 (dernière mise à jour : statut des anomalies après reproduction)
 Périmètre applicatif : TaskTimer_Bugged (backend Node.js/Express/Mongoose + frontend Vue 3/Vite)
 
 > Ce document répond à l'étape 3 du cahier des charges (« Concept et stratégie de test »).
@@ -80,13 +80,17 @@ Objectifs mesurables :
 
 ## 4. Risques, impacts et liens avec les anomalies
 
-Statut des anomalies ci-dessous : **hypothèse issue de la lecture de code**, à confirmer par
-reproduction. Un identifiant `B-xx` ne change plus jusqu'à la fin du projet.
+Statut des anomalies : **13 anomalies sur 13 reproduites ou confirmées** le 25.11.2026 (aucune
+infirmée). Les fiches détaillées, les requêtes et les réponses observées sont dans `ANALYSE.md`.
+Un identifiant `B-xx` ne change plus jusqu'à la fin du projet.
 
 **Constat d'exécution du 25.11.2026 (P-01)** : sur la version `v0-initial` démarrée avec
 `./start.sh`, `POST /api/tasks` avec `{"title":"Test étape 0","priority":"medium"}` renvoie
 `500 {"error":"create failed"}` au lieu d'un `201`. R1 est donc **reproduit**, pas seulement
-supposé ; la cause exacte (B-01 / B-02 / B-03) reste à isoler par test unitaire à l'étape 4.
+supposé. La cause est isolée par lecture et par appel direct : B-01 (`priority` castée en
+`Number`) lève l'exception, B-02 (`validateTaskPayload` → `true`) et B-03 (aucune validation
+dans `POST`) laissent passer les données invalides. Le test unitaire de l'étape 4 figera ce
+comportement avant correction.
 
 | ID | Risque | Impact utilisateur / données | Gravité | Priorité | Anomalies liées | Tests |
 |---|---|---|---|---|---|---|

@@ -26,4 +26,6 @@ Frontend -> cd frontend ; npm i ; npm run dev
 ## Documentation du projet
 
 - `TESTING.md` — concept et stratégie de test (périmètre, risques, outils, critères d'entrée/sortie).
+- `ANALYSE.md` — rapport de mise en place et analyse initiale : fiches de reproduction des
+  13 anomalies (B-01…B-13) avec les preuves d'exécution P-01…P-10.
 - `STEP.md` — plan de travail suivi : étapes 0 à 5 du cahier des charges, à cocher.
