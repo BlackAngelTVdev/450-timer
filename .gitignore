@@ -1,0 +1,20 @@
+# Dépendances
+node_modules/
+
+# Secrets (ne jamais versionner)
+.env
+backend/.env
+frontend/.env*
+
+# Outils et données locaux (binaires MongoDB, base de dev, logs)
+.tools/
+.data/
+*.log
+
+# Divers
+.DS_Store
+.vscode/
+.idea/
+test-results/
+playwright-report/
+coverage/
