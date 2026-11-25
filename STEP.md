@@ -17,7 +17,7 @@ Références stables utilisées ici :
 
 | Étape | Intitulé CDC | Livrable attendu | Statut | Date |
 |---|---|---|---|---|
-| 0 | Prérequis techniques | environnement installé, dépôt Git initialisé | ☐ | |
+| 0 | Prérequis techniques | environnement installé, dépôt Git initialisé | ☑ | 25.11.2026 |
 | 1 | Installer et découvrir | rapport de mise en place | ☐ | |
 | 2 | Analyser les anomalies | tableau d'analyse initiale (reproductions) | ☐ | |
 | 3 | Concept et stratégie de test | `TESTING.md` | ☑ | 25.11.2026 |
@@ -32,15 +32,20 @@ exigé avant l'étape 4. Un critère hors étape est noté NE (non évalué).
 
 ## Étape 0 — Prérequis techniques
 
-- [ ] Node.js ≥ 18 et npm installés (`node -v`, `npm -v`) — version notée : ______
-- [ ] MongoDB installé et démarré (`mongod` écoute sur `127.0.0.1:27017`) — **actuellement absent sur ce poste**
-- [ ] `backend/.env` créé depuis `backend/.env.example` (fait automatiquement par `./start.sh`)
-- [ ] Dépendances installées : `cd backend && npm install`, `cd frontend && npm install`
-  (ou simplement `./start.sh` qui le fait au premier lancement)
-- [ ] Application démarrée avec `./start.sh` → API `http://localhost:3000/api/tasks`, interface `http://localhost:5173`
-- [ ] Dépôt Git initialisé à la racine du projet (`git init`), commit de l'état d'origine
-- [ ] **Tag `v0-initial`** posé sur cet état : indispensable pour comparer « avant/après » à l'étape 5
-- [ ] Journal de travail démarré (table en bas de ce fichier)
+- [x] Node.js ≥ 18 et npm installés — **Node v26.13.1, npm 12.2.3**
+- [x] MongoDB installé et démarré : **MongoDB 7.0.14 local** dans `.tools/mongodb` (données dans
+  `.data/mongo`, port `127.0.0.1:27017`). Pas d'installation système : `sudo` exige un mot de passe
+  et l'OS (FWS Linux) n'a pas `apt`.
+- [x] `backend/.env` créé depuis `backend/.env.example` (`MONGODB_URI=mongodb://127.0.0.1:27017/tasktimer`, `PORT=3000`)
+- [x] Dépendances installées : backend (cors, dotenv, express, mongoose, morgan) et frontend (vue, vite)
+- [x] Application démarrée avec `./start.sh` → API `http://localhost:3000/api/tasks` (200), interface `http://localhost:5173` (200)
+- [x] Dépôt Git initialisé à la racine du projet, commit de l'état d'origine
+- [x] **Tag `v0-initial`** posé sur cet état : indispensable pour comparer « avant/après » à l'étape 5
+- [x] Dépôt distant : https://github.com/BlackAngelTVdev/450-timer (branche `main`)
+- [x] Journal de travail démarré (table en bas de ce fichier)
+
+Constats du 25.11.2026 : le premier `POST` avec `priority` en texte échoue déjà (voir B-01 ci-dessous),
+c'est-à-dire que l'application démarre mais ne permet pas de créer une tâche.
 
 ## Étape 1 — Installer et découvrir
 
@@ -72,7 +77,7 @@ la colonne « Reproduit » doit être remplie uniquement avec une preuve (requê
 
 | ID | Hypothèse (lecture de code) | Exigence | Reproduit ? | Gravité | Priorité | Preuve |
 |---|---|---|---|---|---|---|
-| B-01 | `priority` déclarée `Number` dans le modèle au lieu d'une chaîne `low/medium/high` | CR-2 | ☐ | | | |
+| B-01 | `priority` déclarée `Number` dans le modèle au lieu d'une chaîne `low/medium/high` | CR-2 | ☑ symptôme constaté | Bloquante | Haute | P-01 |
 | B-02 | `validateTaskPayload()` retourne toujours `true` | CR-2 | ☐ | | | |
 | B-03 | `POST` n'appelle pas la validation (données invalides acceptées) | CR-2 | ☐ | | | |
 | B-04 | `title` non obligatoire dans le schéma | CR-2 | ☐ | | | |
@@ -85,6 +90,19 @@ la colonne « Reproduit » doit être remplie uniquement avec une preuve (requê
 | B-11 | mises à jour optimistes sans vérifier `res.ok` → succès affiché malgré l'échec | CR-4 | ☐ | | | |
 | B-12 | libellés en anglais et priorités non traduites (low/medium/high) | CR-3 | ☐ | | | |
 | B-13 | charte non respectée (couleurs des boutons, police, format d'erreur) | CR-6 | ☐ | | | |
+
+**P-01 — constat d'exécution du 25.11.2026** (à reprendre comme preuve dans le rapport) :
+
+```
+$ curl -s -X POST http://localhost:3000/api/tasks \
+    -H 'Content-Type: application/json' \
+    -d '{"title":"Test étape 0","priority":"medium"}' -w ' -> %{http_code}'
+{"error":"create failed"} -> 500
+```
+
+Attendu (contrat API) : `201` avec l'objet créé. Observé : `500`, aucune tâche créée.
+Cela confirme le risque R1 ; l'isolement de la cause exacte (B-01 vs B-02/B-03) reste à faire
+par lecture ciblée + test unitaire de `validateTaskPayload`.
 
 Pour chaque anomalie confirmée, produire une fiche avec : identifiant, environnement,
 préconditions, étapes, données, résultat attendu, résultat observé, preuve, gravité, priorité.
@@ -156,12 +174,19 @@ Minimum obligatoire du CDC :
 | 24.11.2026 | | Décompression du projet, lecture du cahier des charges, lecture du code | 13 hypothèses d'anomalies |
 | 25.11.2026 | | Rédaction de `TESTING.md` (concept et stratégie) | `TESTING.md` |
 | 25.11.2026 | | Script de démarrage `start.sh` (back + front en une commande) | `start.sh`, testé en échec contrôlé |
+| 25.11.2026 | | Installation de MongoDB 7.0.14 local (`.tools/mongodb`), démarrage automatique dans `start.sh` | `mongod` répond, connexion Mongoose validée |
+| 25.11.2026 | | Initialisation Git, commit initial, tag `v0-initial`, dépôt distant | commit `1ab1d57`, tag `v0-initial`, push sur `main` |
+| 25.11.2026 | | Vérification du démarrage complet à froid puis arrêt propre | API 200, UI 200, mongod arrêté proprement (P-01) |
 | | | | |
 
 ## Notes libres
 
-- Le chemin nominal de `./start.sh` n'a pas encore été vérifié : MongoDB n'est pas installé sur
-  le poste et les dépendances npm ne sont pas installées (`./start.sh` s'en charge au 1er lancement).
-- Ne pas utiliser la base `tasktimer` de démonstration pour les tests destructifs (CDC, étape 3).
-- Le dossier du projet n'est pas encore un dépôt Git : initialiser avant de corriger, pour
-  pouvoir produire les preuves avant/après.
+- MongoDB n'est pas installé au niveau système : binaire officiel 7.0.14 décompressé dans
+  `.tools/mongodb` (non versionné), données dans `.data/mongo` (non versionnées). `./start.sh`
+  le démarre si le port 27017 ne répond pas, et l'arrête à la sortie (`KEEP_MONGO=1` pour le garder).
+- Le chemin nominal de `./start.sh` est vérifié : démarrage à froid (mongod + API + Vite), réponses
+  HTTP 200/200, puis arrêt propre des trois processus.
+- Ne pas utiliser la base `tasktimer` de démonstration pour les tests destructifs (CDC, étape 3) :
+  créer `tasktimer_test` à l'étape 4.
+- Dépôt : https://github.com/BlackAngelTVdev/450-timer — un commit par correction à l'étape 5,
+  message référençant `B-xx`.

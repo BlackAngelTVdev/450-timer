@@ -91,9 +91,38 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# --- MongoDB ----------------------------------------------------------------
-if ! port_open "$MONGO_PORT"; then
-  if [ -x "$MONGO_BIN" ]; then
+# --- MongoDB -----------------------------------------------------------------
+# Un port ouvert ne garantit pas que mongod répond (arrêt en cours, proxy, etc.) :
+# on teste une vraie connexion avec le pilote déjà installé côté backend.
+mongo_reachable() {
+  [ -d "$BACKEND_DIR/node_modules/mongoose" ] || return 1
+  (cd "$BACKEND_DIR" && timeout 8 node -e "
+    import('mongoose').then(async ({ default: m }) => {
+      try {
+        await m.connect('mongodb://127.0.0.1:$MONGO_PORT/tasktimer', { serverSelectionTimeoutMS: 2000 });
+        await m.disconnect();
+        process.exit(0);
+      } catch { process.exit(1); }
+    });" >/dev/null 2>&1)
+}
+
+wait_port_closed() {
+  local _i
+  for _i in $(seq 1 40); do
+    port_open "$MONGO_PORT" || return 0
+    sleep 0.5
+  done
+  return 1
+}
+
+if mongo_reachable; then
+  info "MongoDB répond déjà sur 127.0.0.1:$MONGO_PORT (laissé tel quel)."
+elif [ -x "$MONGO_BIN" ]; then
+  # Laisse un mongod en cours d'arrêt libérer le port avant de démarrer le nôtre.
+  wait_port_closed || warn "Le port $MONGO_PORT reste occupé par un autre processus."
+  if port_open "$MONGO_PORT"; then
+    warn "Impossible de démarrer MongoDB local : port $MONGO_PORT occupé."
+  else
     info "Démarrage du MongoDB local (.tools/mongodb) sur 127.0.0.1:$MONGO_PORT"
     mkdir -p "$MONGO_DATA"
     MONGO_STARTED=1
@@ -102,15 +131,15 @@ if ! port_open "$MONGO_PORT"; then
       MONGO_STARTED=0
       warn "Échec du démarrage de MongoDB local — voir $MONGO_LOG"
     fi
-    for _ in $(seq 1 40); do
-      port_open "$MONGO_PORT" && break
-      sleep 0.25
+    for _i in $(seq 1 60); do
+      mongo_reachable && break
+      sleep 0.5
     done
-    port_open "$MONGO_PORT" || warn "MongoDB n'écoute toujours pas sur le port $MONGO_PORT."
-  else
-    warn "Aucun MongoDB détecté sur 127.0.0.1:$MONGO_PORT et aucun binaire local dans .tools/mongodb."
-    warn "L'API échouera à se connecter tant que MongoDB n'est pas démarré."
+    mongo_reachable || warn "MongoDB local ne répond pas sur 127.0.0.1:$MONGO_PORT (voir $MONGO_LOG)."
   fi
+else
+  warn "Aucun MongoDB joignable sur 127.0.0.1:$MONGO_PORT et aucun binaire local dans .tools/mongodb."
+  warn "L'API échouera à se connecter tant que MongoDB n'est pas démarré."
 fi
 
 # --- Backend ----------------------------------------------------------------
@@ -118,7 +147,7 @@ info "Démarrage du backend sur http://localhost:$API_PORT"
 (cd "$BACKEND_DIR" && exec npm run dev) &
 BACKEND_PID=$!
 
-for _ in $(seq 1 60); do
+for _i in $(seq 1 60); do
   port_open "$API_PORT" && break
   if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
     fail "Le backend s'est arrêté avant d'ouvrir le port $API_PORT (voir les erreurs ci-dessus, souvent MongoDB)."

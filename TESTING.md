@@ -83,6 +83,11 @@ Objectifs mesurables :
 Statut des anomalies ci-dessous : **hypothèse issue de la lecture de code**, à confirmer par
 reproduction. Un identifiant `B-xx` ne change plus jusqu'à la fin du projet.
 
+**Constat d'exécution du 25.11.2026 (P-01)** : sur la version `v0-initial` démarrée avec
+`./start.sh`, `POST /api/tasks` avec `{"title":"Test étape 0","priority":"medium"}` renvoie
+`500 {"error":"create failed"}` au lieu d'un `201`. R1 est donc **reproduit**, pas seulement
+supposé ; la cause exacte (B-01 / B-02 / B-03) reste à isoler par test unitaire à l'étape 4.
+
 | ID | Risque | Impact utilisateur / données | Gravité | Priorité | Anomalies liées | Tests |
 |---|---|---|---|---|---|---|
 | R1 | Une tâche valide ne peut pas être créée (priorité stockée dans un type incompatible) | fonction essentielle inutilisable, produit non démontrable | Bloquante | Haute | B-01, B-02, B-03 | TC-I-01, TC-I-02, TC-E-01 |
@@ -151,7 +156,7 @@ npm run test:all      # tout, dans l'ordre de la stratégie
 |---|---|
 | Système | Linux (poste de développement), navigateur Chromium |
 | Runtime | Node.js ≥ 18 (le projet utilise `fetch` et le top-level `await`), npm |
-| Base | MongoDB locale ; **base de test distincte** `tasktimer_test` |
+| Base | MongoDB 7.0.14 local, binaire dans `.tools/mongodb`, données dans `.data/mongo`, démarré par `./start.sh` ; base de développement `tasktimer`, **base de test distincte** `tasktimer_test` |
 | Backend | port 3000, `.env` avec `MONGODB_URI` pointant sur la base de test pour les tests |
 | Frontend | Vite, port 5173, proxy `/api` → 3000 |
 | Version testée | commit initial `TaskTimer_Bugged` (tag `v0-initial`), puis commit(s) de correction |
